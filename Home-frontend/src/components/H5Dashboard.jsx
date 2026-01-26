@@ -9,18 +9,15 @@ import {
     Pocket,
     MoreHorizontal
 } from 'lucide-react';
+import useDashboardStore from '../stores/useDashboardStore';
 
 const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 const H5Dashboard = () => {
-    const [actions, setActions] = useState([
-        { id: 'water', name: '喝水', type: 'drink_water', icon: Droplet, active: true, color: 'bg-[#E1F2FF]', iconColor: 'text-[#007AFF]', subtitle: '2200ml / 3000ml' },
-        { id: 'faucet', name: '纯净水', type: 'water_purifier', icon: Waves, active: true, color: 'bg-[#E1F2FF]', iconColor: 'text-[#007AFF]', subtitle: '水质优' },
-        { id: 'light', name: '客厅灯', type: 'toggle_light', icon: Lightbulb, active: false, color: 'bg-[#FFF9E6]', iconColor: 'text-[#FFB800]', subtitle: '暖白光 · 80%' },
-        { id: 'door', name: '入户门', type: 'unlock_door', icon: DoorOpen, active: false, color: 'bg-[#E8F5E9]', iconColor: 'text-[#4CAF50]', subtitle: '已锁止' },
-        { id: 'ac', name: '全屋空调', type: 'toggle_ac', icon: Wind, active: false, color: 'bg-[#E1F2FF]', iconColor: 'text-[#007AFF]', subtitle: '24°C · 自动' },
-        { id: 'heater', name: '热水器', type: 'toggle_heater', icon: Pocket, active: false, color: 'bg-[#FFF0EB]', iconColor: 'text-[#FF6D00]', subtitle: '恒温 45°C' },
-    ]);
+    // 从 Zustand store 获取状态
+    const actions = useDashboardStore((state) => state.actions);
+    const updateAction = useDashboardStore((state) => state.updateAction);
+    const toggleAction = useDashboardStore((state) => state.toggleAction);
 
     const [logs, setLogs] = useState([]);
     const [userInfo, setUserInfo] = useState({ full_name: '加载中...', id: 101 });
@@ -90,14 +87,8 @@ const H5Dashboard = () => {
     }, []);
 
     const handleActionClick = async (action) => {
-        // 渴水和纯净水保持高亮，其他切换状态
-        const isAlwaysActive = action.id === 'water' || action.id === 'faucet';
-        const newActive = isAlwaysActive ? true : !action.active;
-
-        // 更新本地 UI 状态
-        setActions(prev => prev.map(a =>
-            a.id === action.id ? { ...a, active: newActive } : a
-        ));
+        // 使用 Zustand store 切换状态
+        const newActive = toggleAction(action.id);
 
         // 解析细节数据
         const details = { status: newActive ? 'on' : 'off' };
@@ -221,7 +212,7 @@ const H5Dashboard = () => {
                         <span className="text-[10px] text-slate-400">自动同步中</span>
                     </div>
 
-                    <div className="space-y-4 pb-10">
+                    <div className="space-y-4 pb-24">
                         {logs.length > 0 ? logs.map((log, index) => (
                             <div key={index} className="flex items-center gap-4 group animate-in fade-in slide-in-from-bottom-2 duration-500">
                                 <div className={`w-10 h-10 rounded-full bg-[#F5F5F5] flex items-center justify-center shrink-0 ${log.iconColor}`}>
