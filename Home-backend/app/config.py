@@ -38,7 +38,7 @@ class Settings(BaseSettings):
 
     # ============== 服务器配置 ==============
     host: str = Field(default="0.0.0.0", description="服务器监听地址")
-    port: int = Field(default=8000, description="服务器监听端口")
+    port: int = Field(default=8002, description="服务器监听端口")
 
     # ============== 安全配置 ==============
     secret_key: str = Field(

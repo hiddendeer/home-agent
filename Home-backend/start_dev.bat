@@ -11,6 +11,6 @@ if not exist ".venv\Scripts\activate.bat" (
 )
 
 REM 启动服务器
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload --host 0.0.0.0 --port 8002
 
 pause

@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # ========== 前端服务 ==========
+  frontend:
+    build:
+      context: ./Home-frontend
+      dockerfile: Dockerfile
+    container_name: home-frontend
+    ports:
+      - "5173:5173"
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - home-network
+    # 资源限制（可选）
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ========== 后端服务 ==========
+  backend:
+    build:
+      context: ./Home-backend
+      dockerfile: Dockerfile
+    container_name: home-backend
+    ports:
+      - "8002:8002"
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - home-network
+    # 资源限制（可选）
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+# ========== 网络配置 ==========
+networks:
+  home-network:
+    driver: bridge
+    name: home-network
+
+# ========== 数据卷（可选）==========
+# 如果需要持久化日志或数据，可以取消注释以下内容
+# volumes:
+#   backend-logs:
+#     driver: local
+#   frontend-logs:
+#     driver: local
