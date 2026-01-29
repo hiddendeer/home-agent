@@ -87,43 +87,80 @@ const H5Dashboard = () => {
     }, []);
 
     const handleActionClick = async (action) => {
-        // 使用 Zustand store 切换状态
-        const newActive = toggleAction(action.id);
+        // 对于喝水和纯净水，临时高亮3秒后恢复
+        if (action.type === 'drink_water' || action.type === 'water_purifier') {
+            // 直接设置为激活状态
+            updateAction(action.id, { active: true });
 
-        // 解析细节数据
-        const details = { status: newActive ? 'on' : 'off' };
-
-        // 尝试从 subtitle 中提取数值信息（如温度、水量等）
-        if (action.subtitle) {
-            const tempMatch = action.subtitle.match(/(\d+)°C/);
-            if (tempMatch) details.temperature = parseInt(tempMatch[1]);
-
-            const waterMatch = action.subtitle.match(/(\d+)ml/);
-            if (waterMatch) details.amount = parseInt(waterMatch[1]);
-        }
-
-        // 发送行为到后端
-        try {
-            const response = await fetch(`${API_BASE_URL}/behavior/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    user_id: 101, // 模拟用户ID
-                    device_id: action.id,
-                    action_type: action.type,
-                    details: details,
-                    raw_content: `用户${newActive ? '开启' : '关闭'}了${action.name}${details.temperature ? `，设定的温度为 ${details.temperature}°C` : ''}`
-                }),
-            });
-
-            if (response.ok) {
-                // 立即刷新动态
-                setTimeout(fetchLogs, 1000);
+            // 解析细节数据
+            const details = { status: 'on' };
+            if (action.subtitle) {
+                const waterMatch = action.subtitle.match(/(\d+)ml/);
+                if (waterMatch) details.amount = parseInt(waterMatch[1]);
             }
-        } catch (error) {
-            console.error('Failed to record behavior:', error);
+
+            // 发送行为到后端
+            try {
+                const response = await fetch(`${API_BASE_URL}/behavior/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: 101,
+                        device_id: action.id,
+                        action_type: action.type,
+                        details: details,
+                        raw_content: `用户开启了${action.name}${details.amount ? `，水量为 ${details.amount}ml` : ''}`
+                    }),
+                });
+
+                if (response.ok) {
+                    setTimeout(fetchLogs, 1000);
+                }
+            } catch (error) {
+                console.error('Failed to record behavior:', error);
+            }
+
+            // 3秒后自动恢复为灰色
+            setTimeout(() => {
+                updateAction(action.id, { active: false });
+            }, 3000);
+        } else {
+            // 其他按钮正常切换状态
+            const newActive = toggleAction(action.id);
+
+            // 解析细节数据
+            const details = { status: newActive ? 'on' : 'off' };
+
+            // 尝试从 subtitle 中提取数值信息（如温度、水量等）
+            if (action.subtitle) {
+                const tempMatch = action.subtitle.match(/(\d+)°C/);
+                if (tempMatch) details.temperature = parseInt(tempMatch[1]);
+            }
+
+            // 发送行为到后端
+            try {
+                const response = await fetch(`${API_BASE_URL}/behavior/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: 101,
+                        device_id: action.id,
+                        action_type: action.type,
+                        details: details,
+                        raw_content: `用户${newActive ? '开启' : '关闭'}了${action.name}${details.temperature ? `，设定的温度为 ${details.temperature}°C` : ''}`
+                    }),
+                });
+
+                if (response.ok) {
+                    setTimeout(fetchLogs, 1000);
+                }
+            } catch (error) {
+                console.error('Failed to record behavior:', error);
+            }
         }
     };
 
@@ -169,38 +206,39 @@ const H5Dashboard = () => {
                 {/* Main Content Area */}
                 <div className="flex-1 bg-white rounded-t-[40px] px-6 pt-10 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.05)]">
 
-                    {/* Actions Grid */}
+                    {/* Actions List */}
                     <div className="flex items-center justify-between mb-6 px-1">
                         <h2 className="text-lg font-bold text-slate-800">快捷控制</h2>
                         <button className="text-slate-300"><MoreHorizontal className="w-5 h-5" /></button>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mb-10">
-                        {actions.map((action) => (
+                    <div className="grid grid-cols-2 gap-3 mb-10">
+                        {actions.map((item) => (
                             <button
-                                key={action.id}
-                                onClick={() => handleActionClick(action)}
+                                key={item.id}
+                                onClick={() => handleActionClick(item)}
                                 className={`
-                                    relative overflow-hidden group flex flex-col items-start p-5 rounded-[28px] transition-all duration-300 
-                                    ${action.active
-                                        ? `${action.color || 'bg-[#F2F2F2]'} ring-1 ring-black/5`
-                                        : 'bg-[#F5F5F5] hover:bg-slate-100'}
+                                    relative flex items-center gap-3 p-3 rounded-2xl transition-all duration-200 border
+                                    ${item.active
+                                        ? 'bg-white border-slate-100 shadow-sm'
+                                        : 'bg-[#F5F5F5] border-transparent text-slate-400'}
                                 `}
                             >
                                 <div className={`
-                                    p-2 rounded-xl mb-4 transition-colors
-                                    ${action.active ? 'bg-white shadow-sm' : 'bg-white/50 text-slate-400'}
-                                    ${action.iconColor || ''}
+                                    w-10 h-10 rounded-full flex items-center justify-center shrink-0
+                                    ${item.active ? 'bg-slate-50' : 'bg-white/50'}
                                 `}>
-                                    <action.icon className="w-5 h-5" strokeWidth={2.5} />
+                                    <item.icon className={`w-5 h-5 ${item.active ? item.iconColor : 'text-slate-300'}`} strokeWidth={2} />
                                 </div>
-                                <div className="text-left">
-                                    <span className={`block font-bold text-sm ${action.active ? 'text-slate-800' : 'text-slate-500'}`}>
-                                        {action.name}
+                                <div className="flex flex-col items-start overflow-hidden text-left">
+                                    <span className={`text-[13px] font-bold truncate w-full ${item.active ? 'text-slate-800' : 'text-slate-400'}`}>
+                                        {item.name}
                                     </span>
-                                    <span className={`text-[10px] mt-0.5 font-medium ${action.active ? 'opacity-60 text-slate-600' : 'text-slate-400'}`}>
-                                        {action.subtitle}
-                                    </span>
+                                    {item.subtitle && (
+                                        <span className="text-[10px] text-slate-400 truncate w-full">
+                                            {item.subtitle}
+                                        </span>
+                                    )}
                                 </div>
                             </button>
                         ))}

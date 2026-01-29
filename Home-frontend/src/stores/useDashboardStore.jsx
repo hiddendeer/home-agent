@@ -10,8 +10,8 @@ import {
 
 // 初始控制项配置
 const initialActions = [
-    { id: 'water', name: '喝水', type: 'drink_water', icon: Droplet, active: true, color: 'bg-[#E1F2FF]', iconColor: 'text-[#007AFF]', subtitle: '2200ml / 3000ml' },
-    { id: 'faucet', name: '纯净水', type: 'water_purifier', icon: Waves, active: true, color: 'bg-[#E1F2FF]', iconColor: 'text-[#007AFF]', subtitle: '水质优' },
+    { id: 'water', name: '喝水', type: 'drink_water', icon: Droplet, active: false, color: 'bg-[#E1F2FF]', iconColor: 'text-[#007AFF]', subtitle: '2200ml / 3000ml' },
+    { id: 'faucet', name: '纯净水', type: 'water_purifier', icon: Waves, active: false, color: 'bg-[#E1F2FF]', iconColor: 'text-[#007AFF]', subtitle: '水质优' },
     { id: 'light', name: '客厅灯', type: 'toggle_light', icon: Lightbulb, active: false, color: 'bg-[#FFF9E6]', iconColor: 'text-[#FFB800]', subtitle: '暖白光 · 80%' },
     { id: 'door', name: '入户门', type: 'unlock_door', icon: DoorOpen, active: false, color: 'bg-[#E8F5E9]', iconColor: 'text-[#4CAF50]', subtitle: '已锁止' },
     { id: 'ac', name: '全屋空调', type: 'toggle_ac', icon: Wind, active: false, color: 'bg-[#E1F2FF]', iconColor: 'text-[#007AFF]', subtitle: '24°C · 自动' },
@@ -36,9 +36,8 @@ const useDashboardStore = create((set, get) => ({
 
         if (!action) return;
 
-        // 渴水和纯净水保持高亮，其他切换状态
-        const isAlwaysActive = id === 'water' || id === 'faucet';
-        const newActive = isAlwaysActive ? true : !action.active;
+        // 切换状态
+        const newActive = !action.active;
 
         set((state) => ({
             actions: state.actions.map((a) =>
