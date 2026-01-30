@@ -148,6 +148,22 @@ class Settings(BaseSettings):
         description="Embedding 向量维度（必须与模型输出维度匹配）"
     )
 
+    # ============== Redis 配置 ==============
+    redis_host: str = Field(default="localhost", description="Redis 服务器地址")
+    redis_port: int = Field(default=6379, description="Redis 服务器端口")
+    redis_password: str | None = Field(default=None, description="Redis 密码")
+    redis_db: int = Field(default=0, description="Redis 数据库编号")
+
+    # ============== Celery 配置 ==============
+    celery_broker_url: str = Field(
+        default="redis://localhost:6379/1",
+        description="Celery 代理 URL (Broker URL)"
+    )
+    celery_result_backend: str = Field(
+        default="redis://localhost:6379/1",
+        description="Celery 结果后端 URL (Result Backend)"
+    )
+
 
 
 @lru_cache()

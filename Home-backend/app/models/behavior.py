@@ -1,5 +1,5 @@
-from datetime import datetime
 from sqlalchemy import Column, Integer, String, JSON, DateTime, Text
+from sqlalchemy.sql import func
 from app.database import Base
 
 
@@ -15,8 +15,8 @@ class Behavior(Base):
     details = Column(JSON, nullable=True, comment="原始细节数据")
     raw_content = Column(Text, nullable=True, comment="原始文本描述")
     semantic_content = Column(Text, nullable=True, comment="语义化后的描述")
-    timestamp = Column(DateTime, default=lambda: datetime.now(), comment="发生时间")
-    created_at = Column(DateTime, default=lambda: datetime.now(), comment="入库时间")
+    timestamp = Column(DateTime(timezone=True), server_default=func.now(), comment="发生时间")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), comment="入库时间")
 
     def __repr__(self) -> str:
         return f"<Behavior(id={self.id}, user_id={self.user_id}, action_type={self.action_type})>"
