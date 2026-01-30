@@ -1,5 +1,11 @@
 .agent/
 .claude/
 .env
-node_modules
+.venv/
+node_modules/
 dist/
+__pycache__/
+*.py[cod]
+*$py.class
+celerybeat-schedule*
+.DS_Store
