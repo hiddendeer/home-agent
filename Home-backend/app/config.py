@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     app_version: str = Field(default="1.0.0", description="应用版本号")
     debug: bool = Field(default=True, description="调试模式（开启后会打印 SQL 语句）")
     api_v1_prefix: str = Field(default="/api/v1", description="API v1 路径前缀")
+    timezone: str = Field(default="Asia/Shanghai", description="应用时区")
 
     # ============== 服务器配置 ==============
     host: str = Field(default="0.0.0.0", description="服务器监听地址")

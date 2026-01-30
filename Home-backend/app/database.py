@@ -51,6 +51,8 @@ def init_mysql() -> None:
             pool_size=10,
             max_overflow=20,
             pool_pre_ping=True,
+            # 设置数据库连接的会话时区为东八区（北京时间）
+            connect_args={"init_command": "SET time_zone='+08:00'"}
         )
         async_session_maker = async_sessionmaker(
             engine,
