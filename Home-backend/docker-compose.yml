@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # 1. Main API Service
+  backend:
+    build: .
+    container_name: home_backend_api
+    restart: always
+    ports:
+      - "8002:8002"
+    env_file:
+      - .env
+    environment:
+      - REDIS_HOST=host.docker.internal
+      - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://host.docker.internal:6379/1
+      - CELERY_RESULT_BACKEND=redis://host.docker.internal:6379/1
+      - TZ=Asia/Shanghai
+    command: uvicorn main:app --host 0.0.0.0 --port 8002
+    # depends_on:
+    #   - redis
+    # networks:
+    #   - home_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # 2. Celery Worker (Executes Tasks)
+  worker:
+    build: .
+    container_name: home_backend_worker
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - REDIS_HOST=host.docker.internal
+      - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://host.docker.internal:6379/1
+      - CELERY_RESULT_BACKEND=redis://host.docker.internal:6379/1
+      - TZ=Asia/Shanghai
+    # Start the worker process
+    command: celery -A app.celery_app worker --loglevel=info
+    depends_on:
+      # - redis
+      - backend
+    # networks:
+    #   - home_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # 3. Celery Beat (Scheduler)
+  beat:
+    build: .
+    container_name: home_backend_beat
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - REDIS_HOST=host.docker.internal
+      - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://host.docker.internal:6379/1
+      - CELERY_RESULT_BACKEND=redis://host.docker.internal:6379/1
+      - TZ=Asia/Shanghai
+    # Start the beat scheduler
+    command: celery -A app.celery_app beat --loglevel=info
+    # depends_on:
+    #   - redis
+    #   - backend
+    # networks:
+    #   - home_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # 4. Redis (Removed - using external)
+
+
+networks:
+  home_net:
+    driver: bridge

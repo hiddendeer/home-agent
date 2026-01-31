@@ -1,6 +1,10 @@
 # 使用官方 Python 3.11 镜像
 FROM python:3.11-slim
 
+# 设置时区为上海时间
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # 设置工作目录
 WORKDIR /app
 
@@ -10,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     default-libmysqlclient-dev \
     pkg-config \
     curl \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制依赖文件

@@ -9,6 +9,8 @@ services:
     container_name: home-frontend
     ports:
       - "5173:5173"
+    environment:
+      - TZ=Asia/Shanghai
     restart: unless-stopped
     depends_on:
       backend:
@@ -25,7 +27,7 @@ services:
           cpus: '0.25'
           memory: 256M
 
-  # ========== 后端服务 ==========
+  # ========== 后端服务 (API) ==========
   backend:
     build:
       context: ./Home-backend
@@ -33,11 +35,16 @@ services:
     container_name: home-backend
     ports:
       - "8002:8002"
+    environment:
+      - TZ=Asia/Shanghai
     env_file:
-      - .env
+      - ./Home-backend/.env
+    command: uvicorn main:app --host 0.0.0.0 --port 8002
     restart: unless-stopped
     networks:
       - home-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # 资源限制（可选）
     deploy:
       resources:
@@ -54,6 +61,48 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  # ========== 后端服务 (Worker) ==========
+  backend-worker:
+    build:
+      context: ./Home-backend
+      dockerfile: Dockerfile
+    container_name: home-backend-worker
+    environment:
+      - TZ=Asia/Shanghai
+    env_file:
+      - ./Home-backend/.env
+    # Start the worker process
+    command: celery -A app.celery_app worker --loglevel=info
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - home-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # ========== 后端服务 (Beat Scheduler) ==========
+  backend-beat:
+    build:
+      context: ./Home-backend
+      dockerfile: Dockerfile
+    container_name: home-backend-beat
+    environment:
+      - TZ=Asia/Shanghai
+    env_file:
+      - ./Home-backend/.env
+    # Start the beat scheduler
+    command: celery -A app.celery_app beat --loglevel=info
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - home-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 # ========== 网络配置 ==========
 networks:
