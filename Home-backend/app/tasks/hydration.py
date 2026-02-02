@@ -5,13 +5,14 @@ from sqlalchemy import select, func, desc
 from app.celery_app import celery_app
 from app.config import get_settings
 import app.database as db
-from app.models.action import UserActionLog
+
 from app.models.user import User
 from app.models.notification import Notification
 from app.schemas.notification import NotificationCategory
 from app.services.llm_service import LLMService
 # Import Milvus Service
 from app.services.milvus_service import MilvusService
+from app.models.behavior import Behavior
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -67,10 +68,10 @@ async def _check_logic(user_id: int):
             db.init_mysql()
 
     async with db.async_session_maker() as session:
-        query = select(UserActionLog).where(
-            UserActionLog.user_id == user_id,
-            UserActionLog.action == "drink_water"
-        ).order_by(desc(UserActionLog.timestamp)).limit(1)
+        query = select(Behavior).where(
+            Behavior.user_id == user_id,
+            Behavior.action_type == "drink_water"
+        ).order_by(desc(Behavior.timestamp)).limit(1)
         result = await session.execute(query)
         last_action = result.scalars().first()
         if last_action:
