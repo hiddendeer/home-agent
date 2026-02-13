@@ -58,10 +58,10 @@ async def _check_logic(user_id: int):
     """
     检查用户是否需要喝水提醒。
 
-    实现精确的10分钟提醒逻辑：
-    - 用户喝水后10分钟时发送提醒
-    - 使用9-11分钟的检查窗口，确保在精确的10分钟时提醒
-    - 防止重复提醒（距离上次提醒至少8分钟）
+    实现精确的10小时提醒逻辑：
+    - 用户喝水后10小时时发送提醒
+    - 使用595-605分钟的检查窗口，确保在精确的10小时时提醒
+    - 防止重复提醒（距离上次提醒至少590分钟）
     """
     now = datetime.now()
 
@@ -109,11 +109,11 @@ async def _check_logic(user_id: int):
         else:
             minutes_since_last_remind = (now - last_remind_time).total_seconds() / 60
 
-    # 2. 动态窗口检查：在9-11分钟之间发送提醒
-    # 检查窗口：确保在用户喝水后大约10分钟时发送提醒
-    # 防重复：距离上次提醒至少8分钟
-    in_remind_window = 9 <= minutes_since <= 11
-    should_remind = in_remind_window and minutes_since_last_remind >= 8
+    # 2. 动态窗口检查：在595-605分钟（约10小时）之间发送提醒
+    # 检查窗口：确保在用户喝水后大约10小时时发送提醒
+    # 防重复：距离上次提醒至少590分钟
+    in_remind_window = 595 <= minutes_since <= 605
+    should_remind = in_remind_window and minutes_since_last_remind >= 590
 
     logger.info(
         f"User {user_id} hydration check: "
@@ -125,7 +125,7 @@ async def _check_logic(user_id: int):
     # 3. 如果需要提醒，创建通知并更新最后提醒时间
     if should_remind:
         title = "饮水提醒"
-        content = "温馨提醒：您已经10分钟没喝水了，请记得补水哦！"
+        content = "温馨提醒：您已经10小时没喝水了，请记得补水哦！"
 
         try:
             async with db.async_session_maker() as session:
