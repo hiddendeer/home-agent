@@ -6,6 +6,5 @@ node_modules/
 dist/
 __pycache__/
 *.py[cod]
-*$py.class
-celerybeat-schedule*
+*$py.class+
 .DS_Store

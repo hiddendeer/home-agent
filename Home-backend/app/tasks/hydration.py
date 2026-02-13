@@ -9,9 +9,6 @@ import app.database as db
 from app.models.user import User
 from app.models.notification import Notification
 from app.schemas.notification import NotificationCategory
-from app.services.llm_service import LLMService
-# Import Milvus Service
-from app.services.milvus_service import MilvusService
 from app.models.behavior import Behavior
 
 logger = logging.getLogger(__name__)
@@ -58,16 +55,26 @@ def _run_async(coro):
         return asyncio.run(coro)
 
 async def _check_logic(user_id: int):
-    """Async logic for checking hydration habit with strict 10-min rule."""
+    """
+    检查用户是否需要喝水提醒。
+
+    实现精确的10分钟提醒逻辑：
+    - 用户喝水后10分钟时发送提醒
+    - 使用9-11分钟的检查窗口，确保在精确的10分钟时提醒
+    - 防止重复提醒（距离上次提醒至少8分钟）
+    """
     now = datetime.now()
-    
-    # 1. Check Last Drink Time from MySQL
+
+    # 1. 获取用户上次喝水时间和上次提醒时间
     last_drink_time = None
+    last_remind_time = None
+
     if db.async_session_maker is None:
         if not db.engine:
             db.init_mysql()
 
     async with db.async_session_maker() as session:
+        # 获取最后喝水时间
         query = select(Behavior).where(
             Behavior.user_id == user_id,
             Behavior.action_type == "drink_water"
@@ -77,68 +84,52 @@ async def _check_logic(user_id: int):
         if last_action:
             last_drink_time = last_action.timestamp
 
-    # Calculate time since last drink
+        # 获取上次提醒时间
+        user_query = select(User).where(User.id == user_id)
+        user_result = await session.execute(user_query)
+        user = user_result.scalars().first()
+        if user and user.last_hydration_remind_at:
+            last_remind_time = user.last_hydration_remind_at
+
+    # 计算距离上次喝水的分钟数
     minutes_since = 0
     if last_drink_time:
-        # Ensure timezone awareness compatibility if needed, but assuming naive/local match for now
-        # If timestamp is timezone aware, make 'now' aware or strip tz. 
-        # MySQL datetime usually returns naive if not configured otherwise.
         if last_drink_time.tzinfo:
             minutes_since = (now.astimezone(last_drink_time.tzinfo) - last_drink_time).total_seconds() / 60
         else:
             minutes_since = (now - last_drink_time).total_seconds() / 60
     else:
-        minutes_since = 9999 # First time or long time ago
+        minutes_since = 9999  # 首次使用或很久未使用
 
-    # 2. Query Milvus for Context (Real Data)
-    milvus_context = "No historical context found."
-    try:
-        milvus = MilvusService()
-        # Create a dummy query vector (zeros) since we don't have an embedding model running here easily
-        # In a real scenario, we would embed "drinking water habit"
-        # For now, we search for *any* vector to get *some* user context
-        query_vector = [0.1] * milvus.dim 
-        results = await milvus.search_behavior(user_id, query_vector, limit=3)
-        if results:
-            context_list = [f"- [{datetime.fromtimestamp(r['timestamp'])}] {r['content']}" for r in results]
-            milvus_context = "\n".join(context_list)
-    except Exception as e:
-        logger.warning(f"Milvus query failed (non-critical): {e}")
+    # 计算距离上次提醒的分钟数
+    minutes_since_last_remind = 9999
+    if last_remind_time:
+        if last_remind_time.tzinfo:
+            minutes_since_last_remind = (now.astimezone(last_remind_time.tzinfo) - last_remind_time).total_seconds() / 60
+        else:
+            minutes_since_last_remind = (now - last_remind_time).total_seconds() / 60
 
-    # 3. LLM Decision
-    llm = LLMService(settings)
-    
-    prompt = (
-        f"Context: strict 10-minute hydration rule.\n"
-        f"Current Time: {now}\n"
-        f"Last Drink Time: {last_drink_time} ({int(minutes_since)} minutes ago)\n\n"
-        f"User Behavior History (from Milvus):\n{milvus_context}\n\n"
-        f"Task: strict rule says a user MUST drink water every 10 minutes.\n"
-        f"Analyze: Has it been more than 10 minutes? If so, we MUST remind.\n"
-        f"Decision: Should we send a reminder? Answer YES or NO. If YES, provide a friendly Chinese reminder message."
+    # 2. 动态窗口检查：在9-11分钟之间发送提醒
+    # 检查窗口：确保在用户喝水后大约10分钟时发送提醒
+    # 防重复：距离上次提醒至少8分钟
+    in_remind_window = 9 <= minutes_since <= 11
+    should_remind = in_remind_window and minutes_since_last_remind >= 8
+
+    logger.info(
+        f"User {user_id} hydration check: "
+        f"last_drink={last_drink_time} ({minutes_since:.1f}m ago), "
+        f"last_remind={last_remind_time} ({minutes_since_last_remind:.1f}m ago), "
+        f"in_window={in_remind_window}, should_remind={should_remind}"
     )
 
-    try:
-        response = await llm.generate(prompt)
-        logger.info(f"LLM Response for user {user_id}: {response}")
-        should_remind = "YES" in response.upper()
-    except Exception as e:
-        logger.error(f"LLM call failed: {e}")
-        # Fallback: Remind if > 10 mins rigid check
-        should_remind = minutes_since > 10
-
-    # 4. Push Notification
+    # 3. 如果需要提醒，创建通知并更新最后提醒时间
     if should_remind:
-        # Extract message from LLM or use default
-        content = response if 'response' in locals() and response else "温馨提醒：您已经超过10分钟没喝水了，请记得补水哦！"
-        # If LLM says "YES. 消息...", try to clean it up? 
-        # For now, just use the full response as it's usually conversational.
-        
         title = "饮水提醒"
-        
-        # A. Save to DB
+        content = "温馨提醒：您已经10分钟没喝水了，请记得补水哦！"
+
         try:
             async with db.async_session_maker() as session:
+                # 创建通知
                 notification = Notification(
                     user_id=user_id,
                     category=NotificationCategory.REMINDER.value,
@@ -148,12 +139,20 @@ async def _check_logic(user_id: int):
                     created_at=now
                 )
                 session.add(notification)
-                await session.commit()
-        except Exception as e:
-            logger.error(f"DB save failed: {e}")
 
+                # 更新用户最后提醒时间
+                user_query = select(User).where(User.id == user_id)
+                user_result = await session.execute(user_query)
+                user = user_result.scalars().first()
+                if user:
+                    user.last_hydration_remind_at = now
+
+                await session.commit()
+                logger.info(f"Hydration reminder sent to user {user_id} at {now}")
+        except Exception as e:
+            logger.error(f"Failed to save notification/update user: {e}")
     else:
-        logger.info(f"User {user_id} is hydrated (Last drink {int(minutes_since)} mins ago).")
+        logger.debug(f"User {user_id} no reminder needed (last drink {minutes_since:.1f}m ago)")
 
 @celery_app.task
 def check_hydration_habit_task(user_id: int):

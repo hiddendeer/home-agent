@@ -17,6 +17,7 @@ class User(Base):
     full_name = Column(String(100), comment="全名")
     is_active = Column(Boolean, default=True, comment="是否激活")
     is_superuser = Column(Boolean, default=False, comment="是否超级用户")
+    last_hydration_remind_at = Column(DateTime(timezone=True), nullable=True, comment="上次喝水提醒时间")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), comment="创建时间")
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), comment="更新时间")
 

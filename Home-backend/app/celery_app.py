@@ -37,7 +37,7 @@ celery_app.conf.beat_schedule = {
     },
     "daily-hydration-check": {
         "task": "app.tasks.hydration.trigger_daily_hydration_checks",
-        "schedule": crontab(minute="*/10"), # 每10分钟执行一次
+        "schedule": crontab(minute="*/2"), # 每2分钟执行一次，以精确捕获10分钟提醒窗口
     },
 }
 
