@@ -1,5 +1,5 @@
 from celery import Celery
-from app.config import get_settings
+from app.infrastructure.config import get_settings
 
 settings = get_settings()
 
@@ -31,13 +31,9 @@ celery_app.conf.update(
 
 # 定时任务配置
 celery_app.conf.beat_schedule = {
-    "daily-email-today": {
-        "task": "app.tasks.email_tasks.send_test_email",
-        "schedule": crontab(hour=16, minute=40),  # 今天下午 4:30 (16:30)
-    },
     "daily-hydration-check": {
-        "task": "app.tasks.hydration.trigger_daily_hydration_checks",
-        "schedule": crontab(minute="*/10"), # 每10分钟执行一次，以配合10小时提醒窗口
+        "task": "app.tasks.hydration_tasks.trigger_daily_hydration_checks",
+        "schedule": crontab(minute="*/10"),  # 每10分钟执行一次，以配合10小时提醒窗口
     },
 }
 
@@ -45,5 +41,4 @@ celery_app.conf.beat_schedule = {
 celery_app.autodiscover_tasks(["app.tasks"], force=True)
 
 # 显式导入任务模块以确保注册
-import app.tasks.email_tasks
-import app.tasks.hydration
+import app.tasks.hydration_tasks  # noqa: F401

@@ -3,7 +3,7 @@
 from typing import Annotated
 from fastapi import APIRouter, HTTPException, Depends
 
-from app.dependencies import LLMServiceDep
+from app.infrastructure.dependencies import LLMServiceDep
 from app.schemas.llm import LLMRequest, LLMResponse
 
 router = APIRouter()

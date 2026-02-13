@@ -11,8 +11,8 @@ logging.basicConfig(level=logging.INFO)
 # Ensure app can be imported
 sys.path.append(os.getcwd())
 
-import app.database as db
-from app.database import Base
+import app.infrastructure.database as db
+from app.infrastructure.database import Base
 from app.models.action import UserActionLog
 from app.models.notification import Notification
 from app.models.user import User

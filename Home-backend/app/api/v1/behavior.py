@@ -13,30 +13,26 @@
 import time
 import logging
 from typing import List, Annotated
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, BackgroundTasks, Query
 from sqlalchemy import update
 
-from app.database import get_mysql_session
+from app.infrastructure.dependencies import MySQLSessionDep, LLMServiceDep, EmbeddingServiceDep, MilvusServiceDep
 from app.models.behavior import Behavior
-from app.schemas.behavior import BehaviorCreate, BehaviorResponse, BehaviorQuery
-from app.services.llm_service import LLMService
-from app.services.embedding_service import EmbeddingService
-from app.services.milvus_service import MilvusService
-from app.config import get_settings
+from app.schemas.behavior import BehaviorCreate, BehaviorResponse
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-settings = get_settings()
-
-# 初始化服务实例
-# 注意：这些是无状态的服务类，可以安全地在模块级别初始化
-llm_service = LLMService()
-embedding_service = EmbeddingService()
-milvus_service = MilvusService()
 
 
-async def process_semantic_memory(behavior_id: int, user_id: int, raw_content: str, details: dict):
+async def process_semantic_memory(
+    behavior_id: int,
+    user_id: int,
+    raw_content: str,
+    details: dict,
+    llm_service: LLMServiceDep,
+    embedding_service: EmbeddingServiceDep,
+    milvus_service: MilvusServiceDep
+):
     """异步处理语义记忆（后台任务）。
 
     此函数在后台异步执行，将原始行为数据转换为语义记忆：
@@ -50,12 +46,15 @@ async def process_semantic_memory(behavior_id: int, user_id: int, raw_content: s
         user_id: 用户 ID
         raw_content: 原始行为描述
         details: 行为细节参数
+        llm_service: LLM 服务（依赖注入）
+        embedding_service: Embedding 服务（依赖注入）
+        milvus_service: Milvus 服务（依赖注入）
 
     Note:
         此函数在后台任务中执行，不会阻塞主请求响应。
         如果处理失败，仅记录日志而不影响主流程。
     """
-    import app.database
+    import app.infrastructure.database
 
     try:
         # 步骤 1: 使用 LLM 生成语义化描述
@@ -89,10 +88,10 @@ async def process_semantic_memory(behavior_id: int, user_id: int, raw_content: s
 
         # 步骤 4: 更新 MySQL 记录（补充语义化描述）
         # 注意：需要重新创建数据库会话，因为原会话已关闭
-        if app.database.async_session_maker is None:
-            app.database.init_mysql()
+        if app.infrastructure.database.async_session_maker is None:
+            app.infrastructure.database.init_mysql()
 
-        async with app.database.async_session_maker() as session:
+        async with app.infrastructure.database.async_session_maker() as session:
             await session.execute(
                 update(Behavior)
                 .where(Behavior.id == behavior_id)
@@ -115,7 +114,10 @@ async def process_semantic_memory(behavior_id: int, user_id: int, raw_content: s
 async def record_behavior(
     behavior_in: BehaviorCreate,
     background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_mysql_session)
+    db: MySQLSessionDep,
+    llm_service: LLMServiceDep,
+    embedding_service: EmbeddingServiceDep,
+    milvus_service: MilvusServiceDep
 ):
     """记录用户行为并触发异步语义化处理。
 
@@ -130,6 +132,9 @@ async def record_behavior(
         behavior_in: 行为创建数据
         background_tasks: FastAPI 后台任务管理器
         db: 数据库会话
+        llm_service: LLM 服务
+        embedding_service: Embedding 服务
+        milvus_service: Milvus 服务
 
     Returns:
         BehaviorResponse: 创建的行为记录
@@ -163,7 +168,10 @@ async def record_behavior(
         b_id,
         u_id,
         content,
-        details_dict
+        details_dict,
+        llm_service,
+        embedding_service,
+        milvus_service
     )
     logger.info(f"后台任务已触发: behavior_id={b_id}")
 
@@ -177,9 +185,9 @@ async def record_behavior(
     description="从数据库查询用户行为记录，支持按用户筛选和限制数量"
 )
 async def get_behaviors(
+    db: MySQLSessionDep,
     user_id: Annotated[int | None, Query(description="用户ID，不传则查询所有用户")] = None,
-    limit: Annotated[int, Query(ge=1, le=100, description="返回的最大记录数")] = 10,
-    db: AsyncSession = Depends(get_mysql_session)
+    limit: Annotated[int, Query(ge=1, le=100, description="返回的最大记录数")] = 10
 ):
     """从数据库查询行为记录。
 

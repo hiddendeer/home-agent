@@ -4,10 +4,14 @@ from typing import Annotated, AsyncGenerator
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from passlib.context import CryptContext
 
-from app.database import get_mysql_session, get_milvus_connection
-from app.config import Settings, get_settings
+from app.infrastructure.database import get_mysql_session, get_milvus_connection
+from app.infrastructure.config import Settings, get_settings
 from app.services.llm_service import LLMService
+from app.services.embedding_service import EmbeddingService
+from app.services.milvus_service import MilvusService
+from app.core.security import pwd_context
 
 # 配置依赖
 SettingsDep = Annotated[Settings, Depends(get_settings)]
@@ -61,4 +65,31 @@ def get_llm_service() -> LLMService:
 
 
 LLMServiceDep = Annotated[LLMService, Depends(get_llm_service)]
+
+
+# Embedding 服务依赖
+def get_embedding_service() -> EmbeddingService:
+    """获取 Embedding 服务单例。"""
+    return EmbeddingService()
+
+
+EmbeddingServiceDep = Annotated[EmbeddingService, Depends(get_embedding_service)]
+
+
+# Milvus 服务依赖
+def get_milvus_service_obj() -> MilvusService:
+    """获取 Milvus 服务单例。"""
+    return MilvusService()
+
+
+MilvusServiceDep = Annotated[MilvusService, Depends(get_milvus_service_obj)]
+
+
+# 密码服务依赖
+def get_password_service() -> CryptContext:
+    """获取密码服务（密码哈希上下文）。"""
+    return pwd_context
+
+
+PasswordServiceDep = Annotated[CryptContext, Depends(get_password_service)]
 

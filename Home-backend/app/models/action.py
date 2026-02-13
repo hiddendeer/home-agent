@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
-from app.database import Base
+from app.infrastructure.database import Base
 
 class UserActionLog(Base):
     """User action log model."""

@@ -1,6 +1,6 @@
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from app.config import get_settings
+from app.infrastructure.config import get_settings
 from app.models.user import User
 
 async def seed_user():

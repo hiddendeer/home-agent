@@ -6,8 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
 
-from app.config import get_settings
-from app.database import init_databases, close_databases
+from app.infrastructure.config import get_settings
+from app.infrastructure.database import init_databases, close_databases
 from app.api.v1 import api_router
 
 # 配置日志

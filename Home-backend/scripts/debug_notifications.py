@@ -18,8 +18,8 @@ async def main():
     # 1. 检查数据库连接
     print("\n📌 步骤 1: 检查数据库连接...")
     try:
-        from app.config import get_settings
-        from app.database import init_databases
+        from app.infrastructure.config import get_settings
+        from app.infrastructure.database import init_databases
 
         settings = get_settings()
         print(f"✓ 配置加载成功")
@@ -36,7 +36,7 @@ async def main():
     # 2. 检查表是否存在
     print("\n📌 步骤 2: 检查 notifications 表...")
     try:
-        import app.database as db
+        import app.infrastructure.database as db
         from sqlalchemy import text
 
         async with db.async_session_maker() as session:

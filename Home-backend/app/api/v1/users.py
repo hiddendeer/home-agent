@@ -5,20 +5,14 @@
 """
 
 from typing import Annotated
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
-from passlib.context import CryptContext
 
-from app.dependencies import MySQLSessionDep
+from app.infrastructure.dependencies import MySQLSessionDep
 from app.schemas.user import UserCreate, UserUpdate, UserResponse, UserListResponse
 from app.models.user import User
 
 router = APIRouter()
-
-# 密码加密上下文
-# 使用 bcrypt 算法，这是目前最安全的密码哈希算法之一
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 @router.post("/", response_model=UserResponse, status_code=201, summary="创建用户")
@@ -66,7 +60,8 @@ async def create_user(
 
     # 使用 bcrypt 加密密码
     # bcrypt 会自动加盐并生成哈希值，安全性很高
-    hashed_password = pwd_context.hash(user_data.password)
+    from app.core.security import hash_password
+    hashed_password = hash_password(user_data.password)
 
     # 创建用户记录
     new_user = User(
@@ -184,7 +179,8 @@ async def update_user(
     for field, value in update_data.items():
         if field == "password" and value:
             # 密码需要加密后存储到 hashed_password 字段
-            hashed_password = pwd_context.hash(value)
+            from app.core.security import hash_password
+            hashed_password = hash_password(value)
             setattr(user, "hashed_password", hashed_password)
         else:
             setattr(user, field, value)

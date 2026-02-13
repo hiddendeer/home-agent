@@ -10,8 +10,8 @@ from pymilvus import (
     utility,
     connections
 )
-from app.config import get_settings
-from app.database import init_milvus
+from app.infrastructure.config import get_settings
+from app.infrastructure.database import init_milvus
 
 logger = logging.getLogger(__name__)
 settings = get_settings()

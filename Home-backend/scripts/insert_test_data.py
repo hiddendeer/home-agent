@@ -8,8 +8,8 @@ from datetime import datetime
 sys.path.append('.')
 
 async def insert_test_data():
-    from app.database import init_databases
-    import app.database as db
+    from app.infrastructure.database import init_databases
+    import app.infrastructure.database as db
     from app.models.notification import Notification
     from app.schemas.notification import NotificationCategory
 

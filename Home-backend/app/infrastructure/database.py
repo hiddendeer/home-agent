@@ -15,7 +15,7 @@ from pymilvus import connections, MilvusException
 from typing import Optional
 import logging
 
-from app.config import get_settings
+from app.infrastructure.config import get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()

@@ -6,7 +6,7 @@ sys.path.append(os.getcwd())
 import pytest
 from fastapi.testclient import TestClient
 from main import app
-# from app.database import init_databases, close_databases
+# from app.infrastructure.database import init_databases, close_databases
 # from app.models.notification import Notification, NotificationCategory
 
 client = TestClient(app)

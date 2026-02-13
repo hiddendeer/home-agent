@@ -2,7 +2,7 @@
 
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
-from app.config import Settings, get_settings
+from app.infrastructure.config import Settings, get_settings
 
 
 class LLMService:

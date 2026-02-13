@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, JSON, DateTime, Text
 from sqlalchemy.sql import func
-from app.database import Base
+from app.infrastructure.database import Base
 
 
 class Behavior(Base):
