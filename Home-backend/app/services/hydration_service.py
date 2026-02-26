@@ -64,17 +64,18 @@ class HydrationService:
         if last_remind_time:
             minutes_since_last_remind = calculate_minutes_ago(last_remind_time, now)
 
-        # 2. 动态窗口检查：在595-605分钟（约10小时）之间发送提醒
-        # 检查窗口：确保在用户喝水后大约10小时时发送提醒
-        # 防重复：距离上次提醒至少590分钟
-        in_remind_window = 595 <= minutes_since <= 605
-        should_remind = in_remind_window and minutes_since_last_remind >= 590
+        # 2. 循环提醒逻辑：每10小时检查一次并发送提醒
+        # 触发条件：
+        #   - 距离上次喝水 >= 600分钟（10小时）
+        #   - 距离上次提醒 >= 590分钟（防止重复提醒，10小时内只提醒一次）
+        # 这样可以实现：喝水10小时后提醒，之后每10小时循环提醒，直到用户喝水
+        should_remind = minutes_since >= 600 and minutes_since_last_remind >= 590
 
         logger.info(
             f"User {user_id} hydration check: "
             f"last_drink={last_drink_time} ({minutes_since:.1f}m ago), "
             f"last_remind={last_remind_time} ({minutes_since_last_remind:.1f}m ago), "
-            f"in_window={in_remind_window}, should_remind={should_remind}"
+            f"should_remind={should_remind}"
         )
 
         # 3. 如果需要提醒，创建通知并更新最后提醒时间
