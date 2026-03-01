@@ -42,3 +42,4 @@ celery_app.autodiscover_tasks(["app.tasks"], force=True)
 
 # 显式导入任务模块以确保注册
 import app.tasks.hydration_tasks  # noqa: F401
+import app.tasks.care_tasks       # noqa: F401

@@ -13,6 +13,7 @@
 import time
 import logging
 from typing import List, Annotated
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, BackgroundTasks, Query
 from sqlalchemy import update
 
@@ -174,6 +175,25 @@ async def record_behavior(
         milvus_service
     )
     logger.info(f"后台任务已触发: behavior_id={b_id}")
+
+    # 步骤 3: 模式识别与关怀推送 —— 深夜回家模式
+    # 规则：设备是 door/unlock_door，且时间在晚上20:00之后到次日凌晨04:00之前
+    # 使用标准库实现时区感知的时间检查 (Asia/Shanghai = UTC+8)
+    shanghai_tz = timezone(timedelta(hours=8))
+    now_shanghai = datetime.now(shanghai_tz)
+    hour = now_shanghai.hour
+    
+    logger.info(f"检查深夜回家模式: device_id={behavior_in.device_id}, action_type={behavior_in.action_type}, hour={hour}")
+    
+    if (behavior_in.action_type in ["unlock_door", "open"]) and (behavior_in.device_id in ["door", "unlock_door"]):
+        if hour >= 20 or hour < 4:
+            from app.tasks.care_tasks import send_late_night_care_notification
+            send_late_night_care_notification.delay(u_id)
+            logger.info(f"深夜回家模式触发成功: 触发关怀任务 for user_id={u_id}")
+        else:
+            logger.info(f"深夜回家模式未触发: 当前小时({hour})不在 20:00-04:00 范围内")
+    else:
+        logger.info(f"深夜回家模式未触发: 动作或设备不匹配 (expected: door or unlock_door, got: {behavior_in.device_id}/{behavior_in.action_type})")
 
     return new_behavior
 

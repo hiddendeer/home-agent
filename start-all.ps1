@@ -16,7 +16,7 @@ $BACKEND_DIR = Join-Path $PROJECT_ROOT "Home-backend"
 $FRONTEND_DIR = Join-Path $PROJECT_ROOT "Home-frontend"
 
 # 启动后端服务
-Write-Host "[1/2] Starting Backend (FastAPI)..." -ForegroundColor Green
+Write-Host "[1/4] Starting Backend (FastAPI)..." -ForegroundColor Green
 $backendJob = Start-Job -ScriptBlock {
     param($dir)
     cd $dir
@@ -25,12 +25,31 @@ $backendJob = Start-Job -ScriptBlock {
 } -ArgumentList $BACKEND_DIR
 
 # 启动前端服务
-Write-Host "[2/2] Starting Frontend (Vite)..." -ForegroundColor Green
+Write-Host "[2/4] Starting Frontend (Vite)..." -ForegroundColor Green
 $frontendJob = Start-Job -ScriptBlock {
     param($dir)
     cd $dir
     npm run dev
 } -ArgumentList $FRONTEND_DIR
+
+# 启动 Celery Worker
+Write-Host "[3/4] Starting Celery Worker..." -ForegroundColor Green
+$workerJob = Start-Job -ScriptBlock {
+    param($dir)
+    cd $dir
+    & $dir\.venv\Scripts\Activate.ps1
+    # Windows 下 Celery 建议使用 solo 进程池
+    celery -A app.infrastructure.celery_app worker --loglevel=info --pool=solo
+} -ArgumentList $BACKEND_DIR
+
+# 启动 Celery Beat
+Write-Host "[4/4] Starting Celery Beat..." -ForegroundColor Green
+$beatJob = Start-Job -ScriptBlock {
+    param($dir)
+    cd $dir
+    & $dir\.venv\Scripts\Activate.ps1
+    celery -A app.infrastructure.celery_app beat --loglevel=info
+} -ArgumentList $BACKEND_DIR
 
 # 等待让服务启动
 Start-Sleep -Seconds 3
@@ -48,7 +67,7 @@ Write-Host "Press Ctrl+C to stop all services" -ForegroundColor Yellow
 Write-Host ""
 
 # 监控任务输出
-while ($backendJob.State -eq "Running" -or $frontendJob.State -eq "Running") {
+while ($backendJob.State -eq "Running" -or $frontendJob.State -eq "Running" -or $workerJob.State -eq "Running") {
     if ($frontendJob.HasMoreData) {
         Receive-Job -Job $frontendJob -OutVariable frontendOutput 2>$null | Out-Null
         foreach ($line in $frontendOutput) {
@@ -63,11 +82,23 @@ while ($backendJob.State -eq "Running" -or $frontendJob.State -eq "Running") {
         }
     }
 
+    if ($workerJob.HasMoreData) {
+        Receive-Job -Job $workerJob -OutVariable workerOutput 2>$null | Out-Null
+        foreach ($line in $workerOutput) {
+            Write-Host "[Worker] $line" -ForegroundColor Yellow
+        }
+    }
+
+    if ($beatJob.HasMoreData) {
+        Receive-Job -Job $beatJob -OutVariable beatOutput 2>$null | Out-Null
+        foreach ($line in $beatOutput) {
+            Write-Host "[Beat] $line" -ForegroundColor White
+        }
+    }
+
     Start-Sleep -Milliseconds 100
 }
 
 # 清理
-Stop-Job -Job $backendJob -ErrorAction SilentlyContinue
-Stop-Job -Job $frontendJob -ErrorAction SilentlyContinue
-Remove-Job -Job $backendJob -ErrorAction SilentlyContinue
-Remove-Job -Job $frontendJob -ErrorAction SilentlyContinue
+Stop-Job -Job $backendJob, $frontendJob, $workerJob, $beatJob -ErrorAction SilentlyContinue
+Remove-Job -Job $backendJob, $frontendJob, $workerJob, $beatJob -ErrorAction SilentlyContinue

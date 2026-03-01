@@ -73,7 +73,7 @@ services:
     env_file:
       - ./Home-backend/.env
     # Start the worker process
-    command: celery -A app.celery_app worker --loglevel=info
+    command: celery -A app.infrastructure.celery_app worker --loglevel=info
     restart: unless-stopped
     depends_on:
       backend:
@@ -94,7 +94,7 @@ services:
     env_file:
       - ./Home-backend/.env
     # Start the beat scheduler
-    command: celery -A app.celery_app beat --loglevel=info
+    command: celery -A app.infrastructure.celery_app beat --loglevel=info
     restart: unless-stopped
     depends_on:
       backend:
